@@ -1,21 +1,11 @@
 import sys
+from functools import partial
 from multiprocessing import Pool
 from time import sleep, time
 
 import requests
 from bs4 import BeautifulSoup
 from urllib3 import disable_warnings, exceptions
-
-
-def timer(func):
-    def f(*args, **kwargs):
-        start = time()
-        rv = func(*args, **kwargs)
-        end = time()
-        print("Elapsed time:", end - start, "s")
-        return rv
-
-    return f
 
 
 def get_code(url):
@@ -25,10 +15,10 @@ def get_code(url):
             r = requests.get(url, verify=False, timeout=10)
             break
         except (
-            requests.ConnectionError,
-            requests.ConnectTimeout,
-            requests.ReadTimeout,
-            requests.exceptions.ChunkedEncodingError,
+                requests.ConnectionError,
+                requests.ConnectTimeout,
+                requests.ReadTimeout,
+                requests.exceptions.ChunkedEncodingError,
         ):
             print("Some connection problem, retry in 1s")
             sleep(1)
@@ -47,7 +37,9 @@ def save_csv(data, filename, head1, head2):
         filename = "results.csv"
 
     with open(filename, "w", newline="\n") as csv_file:
-        writer = csv.writer(csv_file, quoting=csv.QUOTE_NONNUMERIC, escapechar='"')
+        writer = csv.writer(csv_file,
+                            quoting=csv.QUOTE_NONNUMERIC,
+                            escapechar='"')
         writer.writerow(head1)
         writer.writerow(head2)
         for row in data:
@@ -79,15 +71,29 @@ def find_following():
             user_url = person.h3.a["href"].replace("/", "")
             following.append(user_url)
         try:
-            next_link = code.find("div", class_="pagination").find("a", class_="next")[
-                "href"
-            ]
+            next_link = code.find("div", class_="pagination").find(
+                "a", class_="next")["href"]
             url = "https://letterboxd.com/" + next_link
         except (TypeError, AttributeError):
             return following
 
 
-def movie_finder(username):
+def my_movie_finder():
+    url = "https://letterboxd.com/" + user + "/films"
+    while True:
+        code = get_code(url)
+        for item in code.find_all("li", class_="poster-container"):
+            new_title = item.div["data-target-link"]
+            my_movies.append(new_title)
+        try:
+            next_link = code.find("div", class_="pagination").find(
+                "a", class_="next")["href"]
+            url = "https://letterboxd.com/" + next_link
+        except (TypeError, AttributeError):
+            return my_movies
+
+
+def movie_finder(username, my_movies):
     movies = []
     url = "https://letterboxd.com/" + username + "/films/ratings/"
     while True:
@@ -101,36 +107,17 @@ def movie_finder(username):
             else:
                 movies.append([new_title, rating])
         try:
-            next_link = code.find("div", class_="pagination").find("a", class_="next")[
-                "href"
-            ]
+            next_link = code.find("div", class_="pagination").find(
+                "a", class_="next")["href"]
             url = "https://letterboxd.com/" + next_link
         except (TypeError, AttributeError):
             return movies
 
 
-def my_movie_finder():
-    url = "https://letterboxd.com/" + user + "/films"
-    while True:
-        code = get_code(url)
-        for item in code.find_all("li", class_="poster-container"):
-            new_title = item.div["data-target-link"]
-            my_movies.append(new_title)
-        try:
-            next_link = code.find("div", class_="pagination").find("a", class_="next")[
-                "href"
-            ]
-            url = "https://letterboxd.com/" + next_link
-        except (TypeError, AttributeError):
-            return my_movies
-
-
-def movie_scraper(username):
+def movie_scraper(username, my_movies):
     movies = []
     print(f'All of "{username}"s rated movies are searched...\n')
-    movies = movie_finder(username)
-    # comb_movies.append(movies)
-    # {n} of {len(friend_li)} Users are already searched.')
+    movies = movie_finder(username, my_movies)
     print(f'"{username}" is finished.')
     print(f"{len(movies)} movies were found \n")
     return movies
@@ -161,11 +148,8 @@ def init():
         else:
             print("\nThe given users are checked...")
             friend_li = friend_li.replace(" ", "").split(",")
-
-            # for i in range(len(friend_li)):
-            #     friend_li[i] = user_check(friend_li[i])
             friend_li = [user_check(friend) for friend in friend_li]
-            friend_li = [friend for friend in friend_li if friend]  # is not None
+            friend_li = [friend for friend in friend_li if friend]
 
         if not friend_li:
             print("\nNo user was found!")
@@ -188,7 +172,9 @@ def init():
     movie_sum = sum(movie_count)
     print(f"{movie_sum} movies were found.")
     comb_list = tuple(zip(friend_li, movie_count))
-    comb_list = sorted(comb_list, key=lambda comb_list: comb_list[1], reverse=True)
+    comb_list = sorted(comb_list,
+                       key=lambda comb_list: comb_list[1],
+                       reverse=True)
     friend_li = [row[0] for row in comb_list]
 
     print(f"\n \nThese eligible users were given:")
@@ -200,27 +186,25 @@ def init():
     return movie_sum
 
 
-def preps():
-    def ex_qu():
-        exc = input(f"Should your watched movies be excluded from the list (y/n)?\n")
+def ex_qu():
+    while True:
+        exc = input(
+            f"Should your watched movies be excluded from the list (y/n)?\n")
         if exc == "n":
             return False
         elif exc == "y":
             return True
         else:
             print('Please only enter "y" or "n"')
-            return ex_qu()
 
-    global my_movies
-    # global user
-    movie_sum = init()
-    # user = "klaspas"
-    # friend_li = ["mimiblitz", "slavae", "bleibtreuboy"]
-    # movie_sum = 350
+
+def preps(movie_sum):
 
     exc = ex_qu()
+
     # If exclud your movies is True, here your watchlist is searched
     # and all movies are collected in my_movies
+    global my_movies
     my_movies = []
     if exc:
         url = "https://letterboxd.com/" + user + "/films"
@@ -246,10 +230,11 @@ def preps():
         start = input("Do you want to start? (y/n) \n")
         if "y" not in start:
             sys.exit()
+    return my_movies
 
 
-@timer
-def combine_movies():
+def combine_movies(comb_movies, my_movies):
+
     unique_movies = [item[0] for item in comb_movies[0]]
     unique_ratings = [[item[1]] for item in comb_movies[0]]
     for lst in comb_movies[1:]:
@@ -265,16 +250,14 @@ def combine_movies():
     return movie_rating
 
 
-def finish():
+def finish(comb_movies, my_movies):
     # all ratings for a movie are collected and put in a list in unique_movies
     print("All ratings are combined...")
-    unique_movies = combine_movies()
+    unique_movies = combine_movies(comb_movies, my_movies)
 
     # for every movie the average rating is calculated and the number of votes is written to the list
-    unique_movies = [
-        [round(sum(item[1]) / len(item[1]), 3), (len(item[1]))] + item
-        for item in unique_movies
-    ]
+    unique_movies = [[round(sum(item[1]) / len(item[1]), 3),
+                      (len(item[1]))] + item for item in unique_movies]
 
     print(f"{len(unique_movies)} unique rated movies are found. \n")
     print("Minimum number of ratings per movie? (You can changes this later)")
@@ -283,12 +266,17 @@ def finish():
 
     # the list is saved as a csv file
     print("If you want to specifiy the dir and filename, enter it here.")
-    filename = input('Else it will be saved as "results.csv" in the current dir')
-    head1 = [f"Movies with at least {rating_nr} Votes, ranked by Avg and No. Votes."]
+    filename = input(
+        'Else it will be saved as "results.csv" in the current dir')
+    head1 = [
+        f"Movies with at least {rating_nr} Votes, ranked by Avg and No. Votes."
+    ]
     head2 = ["Avg Rating, No Votes, Movies, all Votes"]
     save_csv(output_s, filename, head1, head2)
     print("List is saved")
-    print("\n --------------------------------END--------------------------------\n")
+    print(
+        "\n --------------------------------END--------------------------------\n"
+    )
 
 
 def results(unique_movies, rating_nr=None):
@@ -318,9 +306,9 @@ def results(unique_movies, rating_nr=None):
         # the list is filterd. Movies with less than rating_nr votes are omitted
         # the list is sorted from the highes to lowest average, if equal it is sorted for the most votes
         output = [item for item in unique_movies if item[1] >= rating_nr]
-        output_s = sorted(
-            output, key=lambda output: (output[0], output[1]), reverse=True
-        )
+        output_s = sorted(output,
+                          key=lambda output: (output[0], output[1]),
+                          reverse=True)
         out_len = len(output_s)
         print(f"\n \n{out_len} movies have at least {rating_nr} Vote(s)")
         print(
@@ -359,21 +347,25 @@ def results(unique_movies, rating_nr=None):
 
 disable_warnings(exceptions.InsecureRequestWarning)
 
-preps()
-
-friend_len = len(friend_li)
-
-proces = int(friend_len / 3) + 1
-if proces > 12:
-    proces = 12
-if proces < 2:
-    proces = friend_len
-
-# Every rated movie from every user in friend_li is collected in comb_movies
-comb_movies = []
-
 if __name__ == "__main__":
-    new_pool = Pool(processes=proces)
-    comb_movies = new_pool.map(movie_scraper, friend_li, chunksize=1)
 
-finish()
+    movie_sum = init()
+    my_movies = preps(movie_sum)
+
+    friend_len = len(friend_li)
+
+    proces = int(friend_len / 3) + 1
+    if proces > 12:
+        proces = 12
+    if proces < 2:
+        proces = friend_len
+
+    # Every rated movie from every
+    # user in friend_li is collected in comb_movies
+    comb_movies = []
+    movie_scraper_fixed = partial(movie_scraper, my_movies=my_movies)
+
+    new_pool = Pool(processes=proces)
+    comb_movies = new_pool.map(movie_scraper_fixed, friend_li, chunksize=1)
+
+    finish(comb_movies, my_movies)
