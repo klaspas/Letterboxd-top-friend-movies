@@ -493,9 +493,8 @@ if __name__ == '__main__':
     disable_warnings(exceptions.InsecureRequestWarning)
 
     lb = ltbxd()
-
-    lb.start_manuell()
-    # lb.start()
+    
+    lb.start()
 
     lb.mp_scraper()
 
