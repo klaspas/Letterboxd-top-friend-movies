@@ -16,7 +16,7 @@ def avg(liste):
 
 
 def least_square(liste):
-    liste = [i**2 for i in liste]
+    liste = [i ** 2 for i in liste]
     return sqrt(sum(liste) / len(liste))
 
 
@@ -77,7 +77,7 @@ class ltbxd():
         if movie_sum > 3000:
             print(f"\n{movie_sum} movies will be searched.")
             print(
-                f"This could take a while, estimated time: {round(max(movie_count)/3000,1)} min.")
+                f"This could take a while, estimated time: {round(max(movie_count) / 3000, 1)} min.")
             start = input("Do you want to start? (y/n) \n")
             if "y" not in start:
                 sys.exit()
@@ -221,7 +221,6 @@ class ltbxd():
 
 
 def get_code(url):
-
     for _ in range(10):
         try:
             r = requests.get(url, verify=False, timeout=10)
@@ -315,20 +314,24 @@ def get_movie_count(friends):
     print("\nThe number of rated movies is colleced...")
     movie_count = []
     for friend in friends:
-        url = "https://letterboxd.com/" + friend + "/films/ratings/"
+        url = "https://letterboxd.com/" + friend + "/films/rated/.5-5/"
         code = get_code(url)
+        numb = 0
         try:
-            movie_c = code.find(text="Ratings").parent["title"]
+            movie_c = code.find('span', class_="replace-if-you").parent.text.split('has')[1]
         except AttributeError:
-            movie_c = 0
+            pass
         else:
             numb = ""
             for char in movie_c:
                 if char.isdigit():
                     numb += char
+        if numb == '':
+            numb = 0
+        print(friend)
+        print(numb)
         movie_count.append(int(numb))
     return movie_count
-
 
 def ex_qu():
     while True:
@@ -340,7 +343,6 @@ def ex_qu():
             return True
         else:
             print('Please only enter "y" or "n"')
-
 
 def movie_scraper(username, my_movies):
     movies = []
@@ -374,9 +376,7 @@ def movie_scraper(username, my_movies):
             print(f"{len(movies)} movies were found \n")
             return movies
 
-
 def merge_movies(comb_movies):
-
     unique_movies = []
     comb_movies = sorted(comb_movies, key=lambda comb_movies: comb_movies[0])
     while comb_movies:
@@ -395,7 +395,6 @@ def merge_movies(comb_movies):
 
 
 def show_results(movies_list, friends_nr):
-
     threshold = None
     print("Minimum number of ratings per movie? (You can changes this later)")
     while True:
@@ -456,14 +455,13 @@ def check_nr(threshold, friends_nr):
         print(f"Please enter a whole number. \n")
         return None
     elif (int(threshold) > friends_nr):
-        print(f"Please enter a number smaller than {friends_nr+1}. \n")
+        print(f"Please enter a number smaller than {friends_nr + 1}. \n")
         return None
     else:
         return int(threshold)
 
 
 def save_results(data, threshold):
-
     print("If you want to specifiy the dir and filename, enter it here.")
     filename = input(
         'Else it will be saved as "results.csv" in the current dir \n')
@@ -489,13 +487,14 @@ def save_results(data, threshold):
 
 
 if __name__ == '__main__':
-
     disable_warnings(exceptions.InsecureRequestWarning)
 
     lb = ltbxd()
-    
+
     lb.start()
 
-    lb.mp_scraper()
+    lb.sp_scraper()
 
     lb.top_movies()
+
+#xeniaflorica, jimmycthatsme
