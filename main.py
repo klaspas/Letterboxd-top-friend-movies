@@ -328,8 +328,6 @@ def get_movie_count(friends):
                     numb += char
         if numb == '':
             numb = 0
-        print(friend)
-        print(numb)
         movie_count.append(int(numb))
     return movie_count
 
