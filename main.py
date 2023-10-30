@@ -66,8 +66,7 @@ class ltbxd():
         # If exclud your movies is True, here your watchlist is searched
         # and all movies are collected in my_movies
         if exc:
-            my_movies = movie_scraper(user, [])
-            my_movies = [line[0] for line in my_movies]
+            my_movies = all_movie_scraper(user)
             print(f"{len(my_movies)} movies found. These will be excluded. \n\n")
 
         else:
@@ -76,8 +75,7 @@ class ltbxd():
         # Warning if a lot of movies will be searched
         if movie_sum > 3000:
             print(f"\n{movie_sum} movies will be searched.")
-            print(
-                f"This could take a while, estimated time: {round(max(movie_count) / 3000, 1)} min.")
+            print(f"This could take a while, estimated time: {round(max(movie_count) / 3000, 1)} min.")
             start = input("Do you want to start? (y/n) \n")
             if "y" not in start:
                 sys.exit()
@@ -108,7 +106,7 @@ class ltbxd():
         '''
         comb_movies = []
         for friend in self.friends:
-            movies = movie_scraper(friend, self.my_movies)
+            movies = rated_movie_scraper(friend, self.my_movies)
             comb_movies += movies
 
         self.comb_movies = comb_movies
@@ -120,7 +118,7 @@ class ltbxd():
         '''
 
         if __name__ == "__main__":
-            set_start_method("fork")
+            # set_start_method("fork")
 
             # Number of paralles requests to Letteboxd is calculated
             # OPtimze time and don't risk to aktivate some spam filter
@@ -135,7 +133,7 @@ class ltbxd():
             # user in friend_li is collected in comb_movies
 
             movie_scraper_fixed = partial(
-                movie_scraper, my_movies=self.my_movies)
+                rated_movie_scraper, my_movies=self.my_movies)
 
             new_pool = Pool(processes=proces)
             comb_movies_sep = []
@@ -221,9 +219,10 @@ class ltbxd():
 
 
 def get_code(url):
+    # disable_warnings(exceptions.InsecureRequestWarning)
     for _ in range(10):
         try:
-            r = requests.get(url, verify=False, timeout=10)
+            r = requests.get(url, verify=True, timeout=10)
             break
         except (
                 requests.ConnectionError,
@@ -341,8 +340,26 @@ def ex_qu():
             return True
         else:
             print('Please only enter "y" or "n"')
+def all_movie_scraper(username):
+    movies = []
+    print(f"All of '{username}\'s' movies are searched...\n")
 
-def movie_scraper(username, my_movies):
+    url = "https://letterboxd.com/" + username + "/films/"
+    while True:
+        code = get_code(url)
+        for item in code.find_all("li", class_="poster-container"):
+            new_title = item.div["data-target-link"]
+            movies.append(new_title)
+
+        try:
+            next_link = code.find("div", class_="pagination").find(
+                "a", class_="next")["href"]
+            url = "https://letterboxd.com/" + next_link
+        except (TypeError, AttributeError):
+            print(f'"{username}" is finished.')
+            print(f"{len(movies)} movies were found \n")
+            return movies
+def rated_movie_scraper(username, my_movies):
     movies = []
     print(f'All of "{username}"s rated movies are searched...\n')
 
@@ -419,13 +436,11 @@ def show_results(movies_list, friends_nr):
         print(
             f"Here are the top {min(movies_nr, 15)} movie(s), sorted by average rating and number of votes. \n"
         )
-        print("Avg, Nr V, Titel, Individ Votes")
+        print('Avg\t Nr V, Titel,\t\t Individual Votes')
         for i in range(min(movies_nr, 15)):
-            print(
-                movies_sorted[i][0], "\t",
-                movies_sorted[i][1], "\t",
-                movies_sorted[i][2].replace("/film/", "").replace("/", ""),
-                movies_sorted[i][3])
+            movie = movies_sorted[i]
+            movie_name = movie[2].replace("/film/", "").replace("/", "")
+            print(f'{movie[0]:.2f}\t{movie[1]}\t{movie_name}, {movie[3]}')
         print("\n\n")
 
         # possibility to change threshold or to end the program
@@ -485,14 +500,11 @@ def save_results(data, threshold):
 
 
 if __name__ == '__main__':
-    disable_warnings(exceptions.InsecureRequestWarning)
 
     lb = ltbxd()
-
     lb.start()
-
-    lb.sp_scraper()
-
+    # lb.sp_scraper()
+    lb.mp_scraper()
     lb.top_movies()
 
-#xeniaflorica, jimmycthatsme
+# xeniaflorica, jimmycthatsme
